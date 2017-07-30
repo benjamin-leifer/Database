@@ -1,4 +1,10 @@
+'''
+Created on Feb 1, 2017
+
+@author: bleifer
+'''
 import tkinter as tk
+import tkinter.ttk as ttk
 import collections as coll
 from pymongo import MongoClient
 import functools
@@ -8,7 +14,31 @@ import Autocomplete
 
 
 class DBLabelEntry(tk.Frame):
-
+    """
+    {
+      VarType:'string',
+      entrywidth:10,
+      ListLength:1,
+      newLine:true,
+      Autocomplete:false,
+      DataType:'Template',
+      DBVersion:-1,
+      DesignateParent:'P1runID',
+      DictType:'Sample',
+      parentDict:'Process 1
+    }
+    """
+    GenericDict={}
+    GenericDict['VarType']='string'
+    GenericDict['entrywidth']=10
+    GenericDict['ListLength']=1
+    GenericDict['newLine']=True
+    GenericDict['Autocomplete']=False
+    GenericDict['DataType']='Template'
+    GenericDict['DBVersion']=-1
+    GenericDict['DesignateParent']='All'
+    GenericDict['DictType']='Sample'
+    GenericDict['parentDict']='All'
     def __init__(self,root,field,dict,*args,**config):
         tk.Frame.__init__(self,root,**config)
         """
@@ -21,13 +51,21 @@ class DBLabelEntry(tk.Frame):
         self.viewList=[]
         self.tkVarlist=[]
         if dict['DataType'] == 'Template':
-            self.makeDBLabelEntry(field, dict)
             self.newLine=dict['newLine']
             self.designateParent=dict['DesignateParent']
+            if self.field == self.designateParent:
+                self.parentDict = dict['parentDict']
+                self.selfID = dict['selfID']
+            self.makeDBLabelEntry(field, dict)
 
-    def setParent(self,parent):
-        self.parent=parent
-
+    def setParent(self,parent, parentObject = None):
+        self.parent = parent
+        self.parentObject=parentObject
+        if parentObject != None:
+            self.parentEntry = parentObject.getDBEntry()
+            print(self.parentEntry)
+            self.parentField = parentObject.field
+            print(self.parentField)
 
     def getDBEntry(self):
         #print (str(self.tkVarlist))
@@ -46,27 +84,27 @@ class DBLabelEntry(tk.Frame):
         print ("got Values for "+self.field+": "+str(HoldertkVarlist))
         return HoldertkVarlist
 
-    def setDBEntry(self, list):
+    def setDBEntry(self, Entrylist):
         count=0
         for val in self.tkVarlist:
-            val.set(list[count])
+            val.set(Entrylist[count])
             count+=1
 
-    def makeDBLabelEntry(self, field, dict):
+    def makeDBLabelEntry(self, field, dictionary):
 
         holdLabel = tk.Label(self,text= field)
         r=0
         holdLabel.grid(row=r, column=0)
         self.viewList.append(holdLabel)
         varList=[]
-        varList.append(self.SingleEntry(r,field, dict, []))
+        varList.append(self.SingleEntry(r,field, dictionary, []))
 
-        for count in range(1,int(dict['ListLength'])):
+        for count in range(1,int(dictionary['ListLength'])):
             holdLabel = tk.Label(self, text=field)
             holdLabel.grid(row=r, column = 0)
             #print (r,c)
             self.viewList.append(holdLabel)
-            varList.append(self.SingleEntry(r, field, dict, varList))
+            varList.append(self.SingleEntry(r, field, dictionary, varList))
             r=r+1
 
         #self.tkVarlist=varList
@@ -93,7 +131,7 @@ class DBLabelEntry(tk.Frame):
             isList=False
 
         if self.listProceed and isList:
-           r = r-ListLength+1
+            r = r-ListLength+1
 
 
         holdLabel = tk.Label(self.frame,text= k)
@@ -125,18 +163,27 @@ class DBLabelEntry(tk.Frame):
             self.listProceed = False
         return r,c
 
-    def SingleEntry(self,r,field, dict, tkVarlist):
-        entrywidth = int(dict['entrywidth'])   #Important DB Consideration, will break code if DB isn't done correctly FLAG
+    def SingleEntry(self,r,field, dictionary, tkVarlist):
+        entrywidth = int(dictionary['entrywidth'])   #Important DB Consideration, will break code if DB isn't done correctly FLAG
 
-        if dict['Autocomplete']: #REMEMBER DATABASE CONSIDERATION FLAG
+        if dictionary['Autocomplete']: #REMEMBER DATABASE CONSIDERATION FLAG
             '''
             holdAutoEntry = Autocomplete.AutocompleteEntry(allFields, self, listboxLength=3, width=entrywidth, matchesFunction=matches)
             holdAutoEntry.grid(row=r, column=c+1)
             self.viewList.append(holdAutoEntry)
             '''
-            tkVarlist = self.MakeAutoEntry(r,field,dict,tkVarlist,entrywidth)
+            #tkVarlist = self.MakeAutoEntry(r,field,dictionary,tkVarlist,entrywidth)
+            curTkVar = self.TkVarType(dictionary['VarType'])
+            tkVarlist.append(curTkVar) #FLAG
+            #print (curTkVar)
+            holdAutoEntry = ttk.Combobox(self, textvariable=curTkVar,width=entrywidth)
+            holdAutoEntry['values']=['a','b','c','d','e']
+            holdAutoEntry.grid(row=r, column=1)
+            self.viewList.append(holdAutoEntry)
+            self.tkVarlist.append(curTkVar)
+            
         else:
-            curTkVar = self.TkVarType(dict['VarType'])
+            curTkVar = self.TkVarType(dictionary['VarType'])
             tkVarlist.append(curTkVar) #FLAG
             #print (curTkVar)
             holdEntry = tk.Entry(self, textvariable=curTkVar,width=entrywidth)
@@ -160,17 +207,35 @@ class DBLabelEntry(tk.Frame):
         holdAutoEntry.grid(row=r, column=c+1)
         self.viewList.append(holdAutoEntry)
         '''
+        print('Entered MakeAutoEntry')
+        print(self.field)
         self.client=MongoClient()
         db = self.client.test
-        AutoEntryList = functools.reduce(lambda all_keys, rec_keys: all_keys | set(rec_keys), map(lambda d: d.keys(), db.operations.find({field:{'$exists': True}})),set())
+        search = db.operationsTest2.find({self.field:{'$exists': True}})
+        for k in search:
+            print(k)
+            #print(v)
+        
+        AutoEntryList = functools.reduce(lambda all_keys, rec_keys: all_keys | set(rec_keys), map(lambda d: d.keys(), db.operationsTest2.find({self.field:{'$exists': True}})),set())
+        """
+        print(AutoEntryList)
         holdAutoEntry = Autocomplete.AutocompleteEntry(AutoEntryList, self, listboxLength=3, width=entrywidth, matchesFunction=matches)
         tkVarlist.append(holdAutoEntry.var)
         holdAutoEntry.grid(row=r, column=1)
         self.viewList.append(holdAutoEntry)
+        """
+        AutoEntryVar = tk.StringVar()
+        holdAutoEntry = ttk.Combobox(self, textvariable = AutoEntryVar)
+        holdAutoEntry['values']=['a','b','c','d','e']
+        holdAutoEntry.grid(row=r,column=1)
+        tkVarlist.append(AutoEntryVar)
+        print(tkVarlist)
+        tkVarlist[0].set('test')
+        self.viewList.append(AutoEntryVar)
 
         return tkVarlist
 
-    def AutoEntryList():#ToDo
+    def AutoEntryList(self):#ToDo
         return
 
     def TkVarType(self, v):

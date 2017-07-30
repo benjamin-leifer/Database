@@ -1,3 +1,8 @@
+'''
+Created on Feb 1, 2017
+
+@author: bleifer
+'''
 """
 Inspired by http://code.activestate.com/recipes/578253-an-entry-with-autocompletion-for-the-tkinter-gui/
 Changes:
