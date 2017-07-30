@@ -11,6 +11,7 @@ import functools
 import re
 import matplotlib.pyplot as plt
 import Autocomplete
+from _csv import field_size_limit
 
 
 class DBLabelEntry(tk.Frame):
@@ -50,13 +51,17 @@ class DBLabelEntry(tk.Frame):
         self.dict = dict
         self.viewList=[]
         self.tkVarlist=[]
+        #print(dict)
         if dict['DataType'] == 'Template':
             self.newLine=dict['newLine']
             self.designateParent=dict['DesignateParent']
             if self.field == self.designateParent:
                 self.parentDict = dict['parentDict']
                 self.selfID = dict['selfID']
+            self.Misc = dict['Misc'] if 'Misc' in dict else None
+                
             self.makeDBLabelEntry(field, dict)
+            
 
     def setParent(self,parent, parentObject = None):
         self.parent = parent
@@ -90,6 +95,11 @@ class DBLabelEntry(tk.Frame):
             val.set(Entrylist[count])
             count+=1
 
+    def setDBField(self, field):
+        self.field = field
+        print(field)
+        
+    
     def makeDBLabelEntry(self, field, dictionary):
 
         holdLabel = tk.Label(self,text= field)
@@ -182,6 +192,18 @@ class DBLabelEntry(tk.Frame):
             self.viewList.append(holdAutoEntry)
             self.tkVarlist.append(curTkVar)
             
+        elif self.Misc:
+            FieldTkVar1 = self.TkVarType('string')
+            tkVarlist.append(FieldTkVar1) #FLAG
+            FieldTkVar1.trace("w", lambda name, index, mode, FieldTkVar1 = FieldTkVar1: self.setDBField(FieldTkVar1.get()))
+            curTkVar2 = self.TkVarType(dictionary['VarType'])# Needs work - autodetect data type
+            tkVarlist.append(curTkVar2) #FLAG
+            fieldEntry = tk.Entry(self, textvariable = FieldTkVar1, width = entrywidth)
+            fieldEntry.grid(row=r, column = 1)
+            entryEntry = tk.Entry(self, textvariable = curTkVar2, width = entrywidth)
+            entryEntry.grid(row = r, column = 2)
+            self.viewList.append(entryEntry)
+            self.tkVarlist.append(curTkVar2)
         else:
             curTkVar = self.TkVarType(dictionary['VarType'])
             tkVarlist.append(curTkVar) #FLAG
